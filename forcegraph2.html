@@ -1,0 +1,261 @@
+<html>
+<style>
+    .link {
+        fill: none;
+        stroke: #666;
+        stroke-width: 1.5px;
+    }
+
+    #licensing {
+        fill: green;
+    }
+
+    .link.licensing {
+        stroke: green;
+    }
+
+    .link.resolved {
+        stroke-dasharray: 0, 2 1;
+    }
+
+    circle {
+        /* fill: #ccc; */
+        stroke: #333;
+        stroke-width: 1.5px;
+    }
+
+    text {
+        font: 12px Microsoft YaHei;
+        pointer-events: none;
+        text-shadow: 0 1px 0 #fff, 1px 0 0 #fff, 0 -1px 0 #fff, -1px 0 0 #fff;
+    }
+
+    .linetext {
+        font-size: 12px Microsoft YaHei;
+    }
+</style>
+
+<head>
+    <title>Megatest</title>
+    <script type="text/javascript" src="http://d3js.org/d3.v5.min.js"></script>
+</head>
+
+<body>
+    <script>
+        var width = 1920;
+        var height = 1080;
+        var svg = d3.select("body")
+            .append("svg")
+            .attr("width", width)
+            .attr("height", height);
+
+        var marge = { top: 10, bottom: 10, left: 10, right: 10 }
+
+        var g = svg.append("g")
+            .attr("transform", "translate(" + marge.top + "," + marge.left + ")");
+
+        //准备数据
+        var nodes = [//节点集
+            { name: "陕西省", group: 2.5 },
+            { name: "西安市", group: 2 },
+            { name: "安康市", group: 2 },
+            { name: "咸阳市", group: 2 },
+            { name: "宝鸡市", group: 2 },
+            { name: "铜川市", group: 2 },
+            { name: "商洛市", group: 2 },
+            { name: "汉中市", group: 2 },
+            { name: "延安市", group: 2 },
+            { name: "兴平市", group: 2 },
+            { name: "碑林区", group: 1.5 },
+            { name: "未央区", group: 1.5 },
+            { name: "莲湖区", group: 1.5 },
+            { name: "新城区", group: 1.5 },
+            { name: "户县", group: 1.5 },
+            { name: "祖庵镇", group: 1 },
+            { name: "甘河镇", group: 1 },
+            { name: "蒋村镇", group: 1 },
+        ];
+        var edges = [//边集
+            { source: 0, target: 1, value: 2, relation: "省市" },  //value控制线的长短
+            { source: 0, target: 2, value: 2, relation: "省市" },
+            { source: 0, target: 3, value: 2, relation: "省市" },
+            { source: 0, target: 4, value: 2, relation: "省市" },
+            { source: 0, target: 5, value: 2, relation: "省市" },
+            { source: 0, target: 6, value: 2, relation: "省市" },
+            { source: 0, target: 7, value: 2, relation: "省市" },
+            { source: 0, target: 8, value: 2, relation: "省市" },
+            { source: 0, target: 9, value: 2, relation: "省市" },
+            { source: 1, target: 10, value: 1.5, relation: "市区" },
+            { source: 1, target: 11, value: 1.5, relation: "市区" },
+            { source: 1, target: 12, value: 1.5, relation: "市区" },
+            { source: 1, target: 13, value: 1.5, relation: "市区" },
+            { source: 1, target: 14, value: 1.5, relation: "市县" },
+            { source: 14, target: 15, value: 1, relation: "县镇" },
+            { source: 14, target: 16, value: 1, relation: "县镇" },
+            { source: 14, target: 17, value: 1, relation: "县镇" },
+        ];
+
+        //设置一个color的颜色比例尺，为了让不同的扇形呈现不同的颜色
+        var colorScale = d3.scaleOrdinal()
+            .domain(d3.range(nodes.length))
+            .range(d3.schemeCategory10);
+
+
+        var forceSimulation = d3.forceSimulation(nodes)
+            .force("link", d3.forceLink()) //连接线长度
+            .force("charge", d3.forceManyBody().strength(-500)) //顶点的电荷数。该参数决定是排斥还是吸引，数值越小越互相排斥
+            .force("center", d3.forceCenter(width / 2, height / 2));
+        //生成节点数据
+        forceSimulation.nodes(nodes)
+            .on("tick", ticked);//这个函数很重要，后面给出具体实现和说明
+        //生成边数据
+        forceSimulation.force("link")
+            .links(edges)
+            .distance(function (d) {//每一边的长度
+                return d.value * 150;
+            })
+        //设置图形的中心位置
+        forceSimulation.force("center")
+            .x(width / 2)
+            .y(height / 2);
+        //在浏览器的控制台输出
+        console.log(nodes);
+        console.log(edges);
+
+        //绘制箭头
+        var marker =
+            svg.append("marker")
+                .attr("id", "resolved")
+                .attr("markerUnits", "userSpaceOnUse")
+                .attr("viewBox", "0 -5 10 10")//坐标系的区域
+                .attr("refX", 34)//箭头坐标
+                .attr("refY", -1)
+                .attr("markerWidth", 12)//标识的大小
+                .attr("markerHeight", 12)
+                .attr("orient", "auto")//绘制方向，可设定为：auto（自动确认方向）和 角度值
+                .attr("stroke-width", 2)//箭头宽度
+                .append("path")
+                .attr("d", "M0,-5L10,0L0,5")//箭头的路径
+                .attr('fill', '#000000');//箭头颜色
+
+        //绘制边
+        var links = g.append("g")
+            .selectAll("line")
+            .data(edges)
+            .enter()
+            .append("line")
+            .style("stroke", function (d) {
+                var lineColor;
+                //根据关系的不同设置线条颜色
+                if (d.relation == "市区" || d.relation == "市县" || d.relation == "县镇") {
+                    lineColor = "#A254A2";
+                } else if (d.relation == "省市") {
+                    lineColor = "#B43232";
+                }
+                return lineColor;
+            })
+            .attr("stroke-width", 1)
+            .attr("marker-end", "url(#resolved)");
+
+        //边上文字
+        var linksText = g.append("g")
+            .selectAll("text")
+            .data(edges)
+            .enter()
+            .append("text")
+            .text(function (d) {
+                return d.relation;
+            })
+        //建立用来放在每个节点和对应文字的分组<g>
+        var gs = g.selectAll(".circleText")
+            .data(nodes)
+            .enter()
+            .append("g")
+            .attr("transform", function (d, i) {
+                var cirX = d.x;
+                var cirY = d.y;
+                return "translate(" + cirX + "," + cirY + ")";
+            })
+            .call(d3.drag()
+                .on("start", started)
+                .on("drag", dragged)
+                .on("end", ended)
+            );
+
+        //绘制节点圆圈
+        gs.append("circle")
+            // .attr("r",20)
+            .attr("r", function (d, i) {    //圆圈半径
+                return d.group * 15;
+            })
+            .attr("fill", function (d, i) {
+                //return colorScale(i);
+                return colorScale(d.group);
+            })
+            .on("click", function (node) {
+                //单击时让连接线加粗
+                links.style("stroke-width", function (line) {
+                    console.log(line);
+                    if (line.source.name == node.name || line.target.name == node.name) {
+                        return 4;
+                    } else {
+                        return 2;
+                    }
+                });
+                //d3.select(this).style('stroke-width',2);
+            })
+
+        //文字
+        gs.append("text")
+            /*.attr("x",-10)
+            .attr("y",-20)
+            .attr("dy",10)*/
+            .attr("x", -20)
+            .attr("y", -5)
+            .attr("dy", 10)
+            .text(function (d) {
+                return d.name;
+            })
+        function ticked() {
+            links
+                .attr("x1", function (d) { return d.source.x; })
+                .attr("y1", function (d) { return d.source.y; })
+                .attr("x2", function (d) { return d.target.x; })
+                .attr("y2", function (d) { return d.target.y; });
+
+            linksText
+                .attr("x", function (d) {
+                    return (d.source.x + d.target.x) / 2;
+                })
+                .attr("y", function (d) {
+                    return (d.source.y + d.target.y) / 2;
+                });
+
+            gs
+                .attr("transform", function (d) { return "translate(" + d.x + "," + d.y + ")"; });
+        }
+        //drag
+        function started(d) {
+            if (!d3.event.active) {
+                forceSimulation.alphaTarget(0.8).restart();//设置衰减系数，对节点位置移动过程的模拟，数值越高移动越快，数值范围[0，1]
+            }
+            d.fx = d.x;
+            d.fy = d.y;
+        }
+        function dragged(d) {
+            d.fx = d3.event.x;
+            d.fy = d3.event.y;
+        }
+        function ended(d) {
+            if (!d3.event.active) {
+                forceSimulation.alphaTarget(0);
+            }
+            d.fx = null;
+            d.fy = null;
+        }
+
+
+    </script>
+</body>
+
+</html>
