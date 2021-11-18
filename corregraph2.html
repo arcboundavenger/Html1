@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="https://d3js.org/d3.v4.min.js" charset="utf-8"></script>
+    <style>
+        svg {
+            /* font: 12px sans-serif; */
+            text-anchor: middle;
+        }
+
+        rect {
+            stroke: darkgray;
+            fill: none;
+        }
+
+        .y.axis path {
+            fill: none;
+            stroke: none;
+        }
+    </style>
+</head>
+
+<body>
+    <script>
+        d3.csv("https://gist.githubusercontent.com/arcboundavenger/8ac08c3025a0fcc298209b531a853de5/raw/8cc84bc416944bebf899b4fde96a109002396825/test111.csv", function (error, rows) {
+
+            // Going from wide to long format
+            var data = [];
+            rows.forEach(function (d) {
+                var x = d[""];
+                delete d[""];
+                for (prop in d) {
+                    var y = prop,
+                        value = d[prop];
+                    data.push({
+                        x: x,
+                        y: y,
+                        value: +value
+                    });
+                }
+            });
+
+            var margin = {
+                top: 20,
+                right: 120,
+                bottom: 20,
+                left: 20
+            },
+                width = 1200 - margin.left - margin.right,
+                height = 1200 - margin.top - margin.bottom,
+
+                // List of all variables and number of them
+                domain = d3.set(data.map(function (d) {
+                    return d.x
+                })).values(),
+                num = Math.sqrt(data.length),
+                color = d3.scaleLinear() // Create a color scale
+                    .domain([-1, 0, 1])
+                    .range(["yellow", "lightseagreen", "blueviolet"]);
+
+            // // Create a size scale for bubbles on top right. Watch out: must be a rootscale!
+            // var size = d3.scaleSqrt()
+            //     .domain([0, 1])
+            //     .range([0, 9]);
+
+            var x = d3.scalePoint() // X scale
+                .range([0, width])
+                .domain(domain),
+
+                y = d3.scalePoint()
+                    .range([0, height]) // Y scale
+                    .domain(domain),
+                xSpace = x.range()[1] - x.range()[0],
+                ySpace = y.range()[1] - y.range()[0];
+
+
+            var svg = d3.select("body")
+                .append("svg")
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom)
+                .append("g")
+                .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+            var cor = svg.selectAll(".cor")  // Create one 'g' element for each cell of the correlogram
+                .data(data)
+                .enter()
+                .append("g")
+                .attr("class", "cor")
+                .attr("transform", function (d) {
+                    return "translate(" + x(d.x) + "," + y(d.y) + ")";
+                });
+
+            //edited to fit with v4 update  2/5/18
+            cor.append("rect")
+                .attr("width", xSpace / 10)
+                .attr("height", ySpace / 10)
+                .attr("x", -xSpace / 20)
+                .attr("y", -ySpace / 20)
+
+            // Low left part + Diagonal: Add the text with specific color
+            cor.filter(function (d) {
+                var ypos = domain.indexOf(d.y);
+                var xpos = domain.indexOf(d.x);
+                for (var i = (ypos + 1); i < num; i++) {
+                    if (i === xpos) return false;
+                }
+                return true;
+            })
+                .append("text")
+                .attr("y", 5)
+                .text(function (d) {
+                    if (d.x === d.y) {
+                        return d.x;
+                    } else {
+                        return d.value.toFixed(2);
+                    }
+                })
+                // .style("font-size", 11)
+                .style("font-size", function (d) {
+                    if (d.value === 1) {
+                        return 12;
+                    } else {
+                        return 11;
+                    }})
+                // .style("text-align", "center")
+                .style("fill", function (d) {
+                    if (d.value === 1) {
+                        return "#000";
+                    } else {
+                        return color(d.value);
+                    }
+                });
+
+            // Up right part: add circles
+            cor.filter(function (d) {
+                var ypos = domain.indexOf(d.y);
+                var xpos = domain.indexOf(d.x);
+                for (var i = (ypos + 1); i < num; i++) {
+                    if (i === xpos) return true;
+                }
+                return false;
+            })
+                .append("circle")
+                .attr("r", function (d) {
+                    return (width / (num * 2)) * (Math.abs(d.value) + 0.1);
+                })
+                .style("fill", function (d) {
+                    if (d.value === 1) {
+                        return "#000";
+                    } else {
+                        return color(d.value);
+                    }
+                    
+                })
+                .style("opacity", 0.8);
+            
+            //Color Scale on the right
+            var aS = d3.scaleLinear()
+                .range([-margin.top + 5, height + margin.bottom - 5])
+                .domain([1, -1]);
+
+            var yA = d3.axisRight()
+                .scale(aS)
+                .tickPadding(7);
+
+            var aG = svg.append("g")
+                .attr("class", "y axis")
+                .call(yA)
+                .attr("transform", "translate(" + (width + margin.right / 2) + " ,0)")
+
+            var iR = d3.range(-1, 1.01, 0.01);
+            var h = height / iR.length + 3;
+            iR.forEach(function (d) {
+                aG.append('rect')
+                    .style('fill', color(d))
+                    .style('stroke-width', 0)
+                    .style('stoke', 'none')
+                    .attr('height', h)
+                    .attr('width', 10)
+                    .attr('x', 0)
+                    .attr('y', aS(d))
+            });
+        });
+
+    </script>
+</body>
+
+</html>

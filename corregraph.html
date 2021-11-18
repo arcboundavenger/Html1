@@ -10,7 +10,7 @@
 <script>
 
     // Graph dimension
-    const margin = { top: 20, right: 20, bottom: 20, left: 20 },
+    const margin = { top: 20, right: 80, bottom: 20, left: 20 },
         width = 1080 - margin.left - margin.right,
         height = 1080 - margin.top - margin.bottom
 
@@ -74,6 +74,9 @@
                 return `translate(${x(d.x)}, ${y(d.y)})`
             });
 
+        var xSpace = x.range()[1] - x.range()[0],
+            ySpace = y.range()[1] - y.range()[0];
+
         // Low left part + Diagonal: Add the text with specific color
         cor
             .filter(function (d) {
@@ -99,8 +102,6 @@
                     return color(d.value);
                 }
             });
-
-
         // Up right part: add circles
         cor
             .filter(function (d) {
@@ -119,5 +120,35 @@
             })
             .style("opacity", 0.99)
 
+
+
+        // build the "yAxis" color scale
+        // its a series of rects colored correctly
+        // to produce a smooth gradient
+        var aS = d3.scaleLinear()
+            .range([-margin.top + 5, height + margin.bottom - 5])
+            .domain([1, -1]);
+
+        var yA = d3.axisRight()
+            .scale(aS)
+            .tickPadding(7);
+
+        var aG = svg.append("g")
+            .attr("class", "y axis")
+            .call(yA)
+            .attr("transform", "translate(" + (width + margin.right / 2) + " ,0)")
+
+        var iR = d3.range(-1, 1.01, 0.01);
+        var h = height / iR.length + 3;
+        iR.forEach(function (d) {
+            aG.append('rect')
+                .style('fill', color(d))
+                .style('stroke-width', 0)
+                .style('stoke', 'none')
+                .attr('height', h)
+                .attr('width', 10)
+                .attr('x', 0)
+                .attr('y', aS(d))
+        })
     })
 </script>
